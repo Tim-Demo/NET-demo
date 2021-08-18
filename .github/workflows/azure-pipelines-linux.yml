@@ -1,0 +1,33 @@
+trigger:
+- release*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'run'
+    projects: 'build/build.csproj'
+
+- script: |
+    curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
+    echo Unified Agent downloaded successfully
+    CSPROJ=$(basename $(find ./src -type f -wholename "*.csproj") .csproj)
+    DLL=$(find ./ -type f -wholename "*/bin/Release/*/$CSPROJ.dll")
+    java -jar wss-unified-agent.jar -appPath $DLL -d ./src
+  env:
+    WS_APIKEY: $(APIKEY)
+    WS_USERKEY: $(USERKEY)
+    WS_PRODUCTNAME: AZDO_$(System.TeamProject)
+    WS_PROJECTNAME: $(Build.Repository.Name)_$(Build.SourceBranchName)_Prioritize
+    WS_ENABLEIMPACTANALYSIS: true
+    WS_REQUIREKNOWNSHA1: false
+    WS_RESOLVEALLDEPENDENCIES: false
+    WS_NUGET_RESOLVEDEPENDENCIES: true
+    WS_NUGET_RUNPRESTEP: true
+    WS_FILESYSTEMSCAN: false
+    WS_GENERATEPROJECTDETAILSJSON: true
+    WS_EXCLUDES: '**/build/** **/tests/**'
+  displayName: 'Unified Agent Prioritize Scan'
